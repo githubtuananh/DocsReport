@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Reports</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        .document-table {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .document-table th, .document-table td {
+            padding: 15px;
+            text-align: left;
+        }
+
+        .document-table th {
+            background-color: #4285f4;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .document-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .document-table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .document-table a {
+            color: #4285f4;
+            text-decoration: none;
+        }
+
+        .document-table a:hover {
+            text-decoration: underline;
+        }
+
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0, 0, 0, 0.4); /* Black with opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px; /* Could be more or less, depending on screen size */
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .container {
+            display: none; /* Initially hidden */
+        }
+
+        .open-button {
+            background-color: #4285f4;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 1em;
+        }
+
+        .open-button a{
+            color: white;
+            font-size: 1em;
+            text-decoration: none;
+        }
+
+        .open-button:hover {
+            background-color: #357ae8;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            /* padding: 10px; */
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            resize: vertical;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1em;
+            color: #fff;
+            background-color: #4285f4;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357ae8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Table for displaying documents -->
+    <table class="document-table">
+        <thead>
+            <tr>
+                <th>Document Name</th>
+                <th>Link</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (allDocuments.length === 0) { %>
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 20px; color: #999;">
+                        No Data Available
+                    </td>
+                </tr>
+            <% } else { %>
+                <% allDocuments.forEach(doc => { %>
+                    <tr>
+                        <td><%= doc.fileName %></td>
+                        <td><a href="<%= doc.url %>" target="_blank"><%= doc.url %></a></td>
+                        <td style="text-align: center;">
+                            <button class="delete-button" data-id="<%= doc.id %>">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                <% }); %>
+            <% } %>
+        </tbody>
+    </table>
+
+    <!-- Button to open the modal -->
+    <button class="open-button" id="openModalBtn">Add Google Docs Link</button>
+
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+        <!-- Modal content -->
+        <div class="modal-content">
+            <span class="close" id="closeModalBtn">&times;</span>
+            <h1>Enter Google Docs Links</h1>
+            <form action="/get-comments" method="GET">
+                <label for="fileUrls">Google Docs URLs (one per line):</label>
+                <textarea id="fileUrls" name="fileUrls" required></textarea>
+                <button type="submit">Get Comments</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chart and summary section -->
+    <div>
+        <h1>Tổng: <%= sum %></h1>
+        <canvas id="columnChart" width="600" height="400"></canvas>
+        <button class="open-button" id="openModalBtn"><a href="/get-comments">Refresh</a></button>
+    </div>
+
+    <script>
+        // Modal functionality
+        const modal = document.getElementById("myModal");
+        const openModalBtn = document.getElementById("openModalBtn");
+        const closeModalBtn = document.getElementById("closeModalBtn");
+
+        // Open the modal
+        openModalBtn.addEventListener("click", () => {
+            modal.style.display = "block";
+        });
+
+        // Close the modal
+        closeModalBtn.addEventListener("click", () => {
+            modal.style.display = "none";
+        });
+
+        // Close the modal when clicking outside of it
+        window.addEventListener("click", (event) => {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+
+        // Chart.js setup
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('columnChart').getContext('2d');
+
+            const TYPEBUG = {
+                'F1': 'Folder Organisation',
+                'F2': 'File name',
+                'F3': 'Illustration',
+                'F4': 'Text',
+                'F5': 'Other',
+            };
+
+            const data = {
+                labels: [TYPEBUG['F1'], TYPEBUG['F2'], TYPEBUG['F3'], TYPEBUG['F4'], TYPEBUG['F5']],
+                datasets: [{
+                    label: 'Number of Contents',
+                    data: [
+                        <%= results.F1 %>,
+                        <%= results.F2 %>,
+                        <%= results.F3 %>,
+                        <%= results.F4 %>,
+                        <%= results.F5 %>
+                    ],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.5)', // Color for F1
+                        'rgba(54, 162, 235, 0.5)', // Color for F2
+                        'rgba(255, 206, 86, 0.5)', // Color for F3
+                        'rgba(75, 192, 192, 0.5)', // Color for F4
+                        'rgba(153, 102, 255, 0.5)' // Color for F5
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)', // Border color for F1
+                        'rgba(54, 162, 235, 1)', // Border color for F2
+                        'rgba(255, 206, 86, 1)', // Border color for F3
+                        'rgba(75, 192, 192, 1)', // Border color for F4
+                        'rgba(153, 102, 255, 1)' // Border color for F5
+                    ],
+                    borderWidth: 1
+                }]
+            };
+
+            const options = {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Contents'
+                        },
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Type'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    onRender: function (chart) {
+                        const ctx = chart.ctx;
+                        ctx.font = "12px Arial";
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+
+                        chart.data.datasets.forEach((dataset, i) => {
+                            const meta = chart.getDatasetMeta(i);
+                            meta.data.forEach((bar, index) => {
+                                const data = dataset.data[index];
+                                ctx.fillText(data, bar.x, bar.y - 5);
+                            });
+                        });
+                    }
+                }
+            };
+
+            const columnChart = new Chart(ctx, {
+                type: 'bar',
+                data: data,
+                options: options
+            });
+        });
+    </script>
+</body>
+</html>
