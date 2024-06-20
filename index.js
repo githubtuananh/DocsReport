@@ -13,6 +13,7 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 const SCOPE = process.env.SCOPE;
+const HOST = '0.0.0.0';
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -178,6 +179,6 @@ function extractFileId(url) {
 }
 
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
